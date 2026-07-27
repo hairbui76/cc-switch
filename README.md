@@ -324,6 +324,22 @@ current versions in
 release type is used with `version-file` pointed at `VERSION`, so the file the
 updater reads over a raw URL stays the single source of truth.
 
+### One-time repo setup
+
+The workflow needs the repository to let Actions open pull requests:
+
+> Settings → Actions → General → Workflow permissions →
+> **Allow GitHub Actions to create and approve pull requests**
+
+Without it the job fails with `GitHub Actions is not permitted to create or
+approve pull requests`. The `permissions:` block in the workflow raises what
+`GITHUB_TOKEN` is allowed to do, but that checkbox is a repo-level veto on top
+of it and cannot be granted from the workflow file.
+
+The alternative, if you would rather not enable it, is a fine-grained PAT with
+`contents: write` and `pull-requests: write`, stored as a repository secret and
+referenced instead of `secrets.GITHUB_TOKEN`.
+
 A commit that is not a Conventional Commit is simply not counted toward the next
 version. It still reaches `main` channel users immediately — the short sha in the
 build name is what marks it as a new build, so a fix does not need a version bump
