@@ -49,6 +49,28 @@ def warn(msg): print(f"{yellow('[!!]')} {msg}")
 def err(msg): print(f"{red('[xx]')} {msg}", file=sys.stderr)
 
 
+# --------------------------------------------------------------------------
+# debug tracing
+# --------------------------------------------------------------------------
+
+_DEBUG = bool(os.environ.get("CLAUDE_SWITCH_DEBUG"))
+
+
+def enable_debug() -> None:
+    global _DEBUG
+    _DEBUG = True
+
+
+def debug_enabled() -> bool:
+    return _DEBUG
+
+
+def debug(msg) -> None:
+    """Trace line on stderr, so it never pollutes piped output."""
+    if _DEBUG:
+        print(f"{dim('[db]')} {msg}", file=sys.stderr)
+
+
 def strip_ansi(text: str) -> str:
     return _ANSI_RE.sub("", text)
 

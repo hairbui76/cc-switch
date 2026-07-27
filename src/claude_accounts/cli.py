@@ -6,7 +6,7 @@ import sys
 
 from . import VERSION, commands
 from .paths import store_dir
-from .term import CliError, err
+from .term import CliError, enable_debug, err
 
 # Anything not in here is treated as an account name, so that
 # `claude-switch work` means `claude-switch use work`.
@@ -26,10 +26,14 @@ def build_parser():
     )
     parser.add_argument("--version", action="version",
                         version=f"%(prog)s {VERSION}")
+    parser.add_argument("-d", "--debug", action="store_true",
+                        help="trace every HTTP request on stderr "
+                             "(or set CLAUDE_SWITCH_DEBUG=1)")
     sub = parser.add_subparsers(dest="command")
 
     p = sub.add_parser("save", help="save the current login as an account")
-    p.add_argument("name", nargs="?", help="account name (default: from email)")
+    p.add_argument("name", nargs="?",
+                   help="account name (default: from email)")
     p.set_defaults(func=commands.cmd_save)
 
     p = sub.add_parser("use", help="switch to an account")
@@ -75,11 +79,17 @@ def build_parser():
 
 def main(argv=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
-    if argv and argv[0] not in KNOWN_ARGS and not argv[0].startswith("-"):
-        argv.insert(0, "use")
+
+    # Insert the implicit `use`, skipping any leading global flags so that
+    # `claude-switch --debug work` still resolves to an account name.
+    first = next((i for i, a in enumerate(argv) if not a.startswith("-")), None)
+    if first is not None and argv[first] not in KNOWN_ARGS:
+        argv.insert(first, "use")
 
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.debug:
+        enable_debug()
     if not getattr(args, "func", None):
         parser.print_help()
         return 0
