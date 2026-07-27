@@ -45,13 +45,13 @@ which account you are on.
 ### macOS / Linux / Git Bash / WSL
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/hairbui76/claude-code-multi-account-switch/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/hairbui76/cc-switch/main/install.sh | sh
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-irm https://raw.githubusercontent.com/hairbui76/claude-code-multi-account-switch/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/hairbui76/cc-switch/main/install.ps1 | iex
 ```
 
 Then open a new terminal, or `source ~/.bashrc` — the installer tells you which.
@@ -80,7 +80,11 @@ call time, so an update takes effect on the very next command.
 | Channel | Tracks | Use it when |
 | --- | --- | --- |
 | `main` (default) | every push to `main` | you want small fixes the moment they land |
-| `stable` | the newest git tag | you only want tagged releases |
+| `stable` | the newest published GitHub release | you only want reviewed releases |
+
+`stable` resolves through `/releases/latest`, which GitHub defines as the newest
+non-draft, non-prerelease release — the tag listing endpoint is not guaranteed to
+come back in chronological order.
 
 ```bash
 claude-switch update --channel stable    # switch channel and update
@@ -124,8 +128,8 @@ Re-running the `curl` installer also works and is equivalent to a fresh install.
 For a git checkout you can edit in place:
 
 ```bash
-git clone https://github.com/hairbui76/claude-code-multi-account-switch
-cd claude-code-multi-account-switch
+git clone https://github.com/hairbui76/cc-switch
+cd cc-switch
 ./init.sh          # or .\init.ps1 on PowerShell
 ```
 
@@ -260,6 +264,9 @@ already shared.
 
 ```text
 VERSION                     the published version, read by the updater
+release-please-config.json  release automation: bumps VERSION, tags, releases
+.release-please-manifest.json   the version release-please believes is current
+.github/workflows/          release-please
 install.sh                  curl installer: managed, self-updating copy
 install.ps1                 the same for PowerShell
 init.sh                     dev installer: point a shell at this checkout
@@ -286,16 +293,48 @@ src/claude_accounts/        all logic, stdlib only
 
 ## Releasing
 
-The updater reads the root `VERSION` file, so a release is:
+Versioning is automated by
+[release-please](https://github.com/googleapis/release-please). You never edit
+`VERSION` or tag by hand.
 
-```bash
-# edit VERSION, e.g. 2.1.0 -> 2.1.1
-git commit -am "..." && git push          # `main` channel users get it now
-git tag v2.1.1 && git push --tags         # `stable` channel users get it now
+Write [Conventional Commits](https://www.conventionalcommits.org/) on `main`:
+
+| Commit prefix | Effect on the next release |
+| --- | --- |
+| `fix: ...` | patch bump — `2.1.0` → `2.1.1` |
+| `feat: ...` | minor bump — `2.1.0` → `2.2.0` |
+| `feat!: ...` or a `BREAKING CHANGE:` footer | major bump — `2.1.0` → `3.0.0` |
+| `docs:`, `refactor:`, `perf:`, `build:` | listed in the changelog, no bump on their own |
+| `chore:`, `ci:`, `test:`, `style:` | no bump, hidden from the changelog |
+
+On every push to `main`, the workflow opens or updates a single **release PR**
+that bumps `VERSION` and writes `CHANGELOG.md`. Merging that PR tags the commit
+`vX.Y.Z` and publishes a GitHub release.
+
+```text
+push `fix:` to main  ->  release PR "chore(main): release 2.1.1"  ->  merge
+                                                                       |
+                    `main` channel users already had the fix           |
+                    `stable` channel users get it here  <--------------+
 ```
 
-Pushing without bumping `VERSION` is fine — the short sha in the build name
-still marks it as a new build.
+Config lives in [`release-please-config.json`](release-please-config.json) and
+current versions in
+[`.release-please-manifest.json`](.release-please-manifest.json). The `simple`
+release type is used with `version-file` pointed at `VERSION`, so the file the
+updater reads over a raw URL stays the single source of truth.
+
+A commit that is not a Conventional Commit is simply not counted toward the next
+version. It still reaches `main` channel users immediately — the short sha in the
+build name is what marks it as a new build, so a fix does not need a version bump
+to be picked up.
+
+### Why a broken push is not a broken install
+
+Clients verify a download by running its `--version` before activating it, and
+only then rewrite the `current` pointer. A push that fails to import therefore
+makes `claude-switch update` fail with a message and leave the working build in
+place; it cannot brick an install.
 
 The package can also be run directly:
 

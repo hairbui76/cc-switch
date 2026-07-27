@@ -14,8 +14,19 @@ import sys
 from .jsonio import write_text
 from .term import dim, info, ok, warn
 
-BEGIN = "# >>> claude-code-multi-account-switch >>>"
-END = "# <<< claude-code-multi-account-switch <<<"
+BEGIN = "# >>> cc-switch >>>"
+END = "# <<< cc-switch <<<"
+
+# Markers used before the repo was renamed. Still recognised when stripping, so
+# a re-install replaces an old block instead of leaving a second, stale one
+# behind that would keep putting a dead path on PATH.
+LEGACY_MARKERS = (
+    ("# >>> claude-code-multi-account-switch >>>",
+     "# <<< claude-code-multi-account-switch <<<"),
+)
+
+_BEGINS = frozenset([BEGIN] + [b for b, _ in LEGACY_MARKERS])
+_ENDS = frozenset([END] + [e for _, e in LEGACY_MARKERS])
 
 # The subcommand each shim pins, so `claude-next` needs no arguments.
 COMMANDS = (
@@ -144,10 +155,10 @@ def _strip_managed(text: str) -> str:
     kept, inside = [], False
     for line in text.splitlines(True):
         stripped = line.strip()
-        if stripped == BEGIN:
+        if stripped in _BEGINS:
             inside = True
             continue
-        if stripped == END:
+        if stripped in _ENDS:
             inside = False
             continue
         if inside or stripped.startswith(STALE_ALIASES):

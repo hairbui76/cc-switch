@@ -1,0 +1,34 @@
+name: release-please
+
+# Keeps a release PR open that bumps VERSION and writes CHANGELOG.md from the
+# Conventional Commit messages on main. Merging it tags the commit and publishes
+# a GitHub release, which is what `claude-switch update --channel stable`
+# resolves through /releases/latest.
+#
+# The `main` channel needs none of this - it tracks every push - so a failure
+# here never blocks users from getting a fix.
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+# A second push while a release PR is being written would race it.
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

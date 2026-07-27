@@ -4,15 +4,19 @@
 # no reinstall, and updates come from `git pull`.
 #
 # For normal use install a managed copy instead, which can self-update:
-#   curl -fsSL https://raw.githubusercontent.com/hairbui76/claude-code-multi-account-switch/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/hairbui76/cc-switch/main/install.sh | sh
 #
 # Supports bash and zsh, on Linux / macOS / Git Bash on Windows.
 
 set -e
 
 DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-BEGIN='# >>> claude-code-multi-account-switch >>>'
-END='# <<< claude-code-multi-account-switch <<<'
+BEGIN='# >>> cc-switch >>>'
+END='# <<< cc-switch <<<'
+# Markers from before the repo was renamed, stripped too so a re-run replaces
+# an old block rather than leaving a second one behind.
+OLD_BEGIN='# >>> claude-code-multi-account-switch >>>'
+OLD_END='# <<< claude-code-multi-account-switch <<<'
 
 # --- sanity check -----------------------------------------------------------
 # Candidates must be *probed*, not just found on PATH: on Windows `python3` is
@@ -65,8 +69,10 @@ fi
 for rc in $RC_FILES; do
     tmp="$rc.claude-switch.tmp"
     if [ -f "$rc" ]; then
-        # Strip our managed block plus any v1 aliases, then re-append.
+        # Strip our managed block (current and pre-rename), plus any v1
+        # aliases, then re-append.
         sed -e "\|^$BEGIN\$|,\|^$END\$|d" \
+            -e "\|^$OLD_BEGIN\$|,\|^$OLD_END\$|d" \
             -e '/^alias claude-switch=/d' \
             -e '/^alias claude-sync=/d' \
             -e '/^alias claude-next=/d' \
