@@ -3,10 +3,10 @@
 import os
 import shutil
 import time
-import urllib.error
 
 from . import migrate
-from .api import USAGE_URL, fetch_usage, fmt_pct, fmt_reset, token_for
+from .api import (OAUTH_CLIENT_ID, TOKEN_URL, USAGE_URL, ApiError, fetch_usage,
+                  fmt_pct, fmt_reset, http_json, token_for)
 from .credentials import oauth_block, read_credentials
 from .jsonio import read_json
 from .paths import (account_path, claude_config_path, claude_dir,
@@ -189,13 +189,8 @@ def cmd_usage(args):
         try:
             data = load_account(name)
             rows.append((name, data, fetch_usage(token_for(data)), None))
-        except urllib.error.HTTPError as exc:
-            reason = ("token rejected - re-login on this account"
-                      if exc.code == 401 else f"HTTP {exc.code}")
-            rows.append((name, None, None, reason))
-        except urllib.error.URLError as exc:
-            rows.append((name, None, None, f"network error: {exc.reason}"))
         except CliError as exc:
+            # ApiError already explains which call failed and why.
             rows.append((name, None, None, str(exc)))
 
     current = current_account_name()
@@ -266,11 +261,28 @@ def cmd_doctor(args):
     print(bold("api"))
     token = oauth_block(read_credentials() or {}).get("accessToken")
     if not token:
-        print(f"  {yellow('skipped')} - no access token")
+        print(f"  usage  {yellow('skipped')} - no access token")
     else:
         try:
             fetch_usage(token)
-            print(f"  {green('reachable')} - {USAGE_URL}")
-        except Exception as exc:  # noqa: BLE001 - this is the diagnostic
-            print(f"  {red('failed')} - {exc}")
+            print(f"  usage  {green('reachable')}  {USAGE_URL}")
+        except CliError as exc:
+            print(f"  usage  {red('failed')}  {exc}")
+
+    # Probe with a deliberately invalid grant: a 400 proves the endpoint is
+    # there, which is what distinguishes "expired token" from "wrong URL".
+    try:
+        http_json(TOKEN_URL, stage="refresh", payload={
+            "grant_type": "refresh_token",
+            "refresh_token": "probe-invalid",
+            "client_id": OAUTH_CLIENT_ID,
+        })
+        print(f"  token  {green('reachable')}  {TOKEN_URL}")
+    except ApiError as exc:
+        state = green("reachable") if exc.status == 400 else red("failed")
+        note = "" if exc.status == 400 else f"  {exc}"
+        print(f"  token  {state}  {TOKEN_URL}{note}")
+
+    print()
+    print(dim("  re-run any command with --debug to trace every request"))
     return 0

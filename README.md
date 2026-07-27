@@ -111,6 +111,32 @@ claude-switch remove old-account
 claude-switch doctor         # diagnose paths, credentials and API access
 ```
 
+## Troubleshooting
+
+There is no log file. Add `--debug` to any command (or set
+`CLAUDE_SWITCH_DEBUG=1`) to trace every HTTP request on stderr:
+
+```bash
+claude-usage --debug
+```
+
+```text
+[db] work: token expired, refreshing
+[db] POST https://api.anthropic.com/v1/oauth/token  (refresh)
+[db]   -> 400 {"error": "invalid_grant", ...}
+```
+
+`claude-switch doctor` checks both endpoints the tool depends on, so a broken
+URL is distinguishable from a broken token.
+
+| `claude-usage` says | Meaning |
+| --- | --- |
+| `refresh token rejected` | The stored refresh token is dead. Switch to that account and run `claude login`. |
+| `token rejected` | The access token was refused and could not be refreshed. Log in again. |
+| `rate limited` | Too many requests. Wait and retry. |
+| `usage: HTTP 404` | The API moved. Check `doctor`, then open an issue. |
+| `-%` in a column | The API returned no number for that window, which is normal for some plans. |
+
 ## Upgrading from v1
 
 v1 stored a full copy of `~/.claude` per account, which is what caused sessions
