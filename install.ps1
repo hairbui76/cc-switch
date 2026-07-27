@@ -1,17 +1,17 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-    One-line installer for claude-code-multi-account-switch.
+    One-line installer for cc-switch.
 
 .DESCRIPTION
-    irm https://raw.githubusercontent.com/hairbui76/claude-code-multi-account-switch/main/install.ps1 | iex
+    irm https://raw.githubusercontent.com/hairbui76/cc-switch/main/install.ps1 | iex
 
     Needs PowerShell 5+ and Python 3.7+. Does not need git.
     Re-running it is also how you upgrade, though `claude-switch update` is
     quicker once installed.
 
     Environment overrides:
-      CLAUDE_SWITCH_CHANNEL  main (every push, default) | stable (git tags)
+      CLAUDE_SWITCH_CHANNEL  main (every push, default) | stable (releases)
       CLAUDE_SWITCH_HOME     install root
       CLAUDE_SWITCH_BIN      directory the claude-* launchers go into
       CLAUDE_SWITCH_PYTHON   interpreter to use
@@ -20,7 +20,7 @@
 
 $ErrorActionPreference = 'Stop'
 
-$repo = if ($env:CLAUDE_SWITCH_REPO) { $env:CLAUDE_SWITCH_REPO } else { 'hairbui76/claude-code-multi-account-switch' }
+$repo = if ($env:CLAUDE_SWITCH_REPO) { $env:CLAUDE_SWITCH_REPO } else { 'hairbui76/cc-switch' }
 $channel = if ($env:CLAUDE_SWITCH_CHANNEL) { $env:CLAUDE_SWITCH_CHANNEL } else { 'main' }
 
 # --- interpreter ------------------------------------------------------------

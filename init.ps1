@@ -8,14 +8,18 @@
     no reinstall, and updates come from `git pull`.
 
     For normal use install a managed copy instead, which can self-update:
-      irm https://raw.githubusercontent.com/hairbui76/claude-code-multi-account-switch/main/install.ps1 | iex
+      irm https://raw.githubusercontent.com/hairbui76/cc-switch/main/install.ps1 | iex
 #>
 
 $ErrorActionPreference = 'Stop'
 
 $dir = $PSScriptRoot
-$begin = '# >>> claude-code-multi-account-switch >>>'
-$end = '# <<< claude-code-multi-account-switch <<<'
+$begin = '# >>> cc-switch >>>'
+$end = '# <<< cc-switch <<<'
+# Markers from before the repo was renamed, stripped too so a re-run replaces
+# an old block rather than leaving a second one behind.
+$oldBegin = '# >>> claude-code-multi-account-switch >>>'
+$oldEnd = '# <<< claude-code-multi-account-switch <<<'
 
 # --- sanity check -----------------------------------------------------------
 # Candidates must be *probed*, not just found on PATH: on Windows `python3` is
@@ -60,8 +64,12 @@ if (-not (Test-Path $profileDir)) { New-Item -ItemType Directory -Path $profileD
 $existing = if (Test-Path $profilePath) { Get-Content $profilePath -Raw } else { '' }
 
 # Drop any previously installed block so re-running stays idempotent.
-$pattern = [regex]::Escape($begin) + '.*?' + [regex]::Escape($end)
-$cleaned = [regex]::Replace($existing, $pattern, '', 'Singleline').TrimEnd()
+$cleaned = $existing
+foreach ($pair in @(@($begin, $end), @($oldBegin, $oldEnd))) {
+    $pattern = [regex]::Escape($pair[0]) + '.*?' + [regex]::Escape($pair[1])
+    $cleaned = [regex]::Replace($cleaned, $pattern, '', 'Singleline')
+}
+$cleaned = $cleaned.TrimEnd()
 
 $updated = if ($cleaned) { "$cleaned`r`n`r`n$block`r`n" } else { "$block`r`n" }
 Set-Content -Path $profilePath -Value $updated -Encoding UTF8

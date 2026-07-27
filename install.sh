@@ -1,14 +1,14 @@
 #!/usr/bin/env sh
-# One-line installer for claude-code-multi-account-switch.
+# One-line installer for cc-switch.
 #
-#   curl -fsSL https://raw.githubusercontent.com/hairbui76/claude-code-multi-account-switch/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/hairbui76/cc-switch/main/install.sh | sh
 #
 # Needs curl (or wget), tar and Python 3.7+. Does not need git.
 # Re-running it is also how you upgrade, though `claude-switch update` is
 # quicker once installed.
 #
 # Environment overrides:
-#   CLAUDE_SWITCH_CHANNEL  main (every push, default) | stable (git tags)
+#   CLAUDE_SWITCH_CHANNEL  main (every push, default) | stable (releases)
 #   CLAUDE_SWITCH_HOME     install root
 #   CLAUDE_SWITCH_BIN      directory the claude-* launchers go into
 #   CLAUDE_SWITCH_PYTHON   interpreter to use
@@ -16,7 +16,7 @@
 
 set -e
 
-REPO="${CLAUDE_SWITCH_REPO:-hairbui76/claude-code-multi-account-switch}"
+REPO="${CLAUDE_SWITCH_REPO:-hairbui76/cc-switch}"
 CHANNEL="${CLAUDE_SWITCH_CHANNEL:-main}"
 
 die() {

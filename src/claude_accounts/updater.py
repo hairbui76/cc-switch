@@ -31,18 +31,23 @@ from . import VERSION, shims
 from .jsonio import read_json, write_json, write_text
 from .term import (CliError, bold, debug, dim, green, info, ok, warn, yellow)
 
-REPO = os.environ.get(
-    "CLAUDE_SWITCH_REPO", "hairbui76/claude-code-multi-account-switch")
+DEFAULT_REPO = "hairbui76/cc-switch"
 
 # `main` tracks every push, so a one-line fix is available the moment it lands.
-# `stable` tracks the newest git tag, for people who only want releases.
+# `stable` tracks the newest published release, for people who only want those.
 CHANNELS = ("main", "stable")
 DEFAULT_CHANNEL = "main"
 
 # Enough history to roll back through a bad release without hoarding trees.
 KEEP_VERSIONS = 3
 
-INSTALL_URL = f"https://raw.githubusercontent.com/{REPO}/main/install.sh"
+
+class HttpError(CliError):
+    """A GitHub request failed. Carries the status so 404 can be special."""
+
+    def __init__(self, message, status=None):
+        super().__init__(message)
+        self.status = status
 
 
 # --------------------------------------------------------------------------
@@ -108,6 +113,24 @@ def read_pointer(root=None):
         return None
 
 
+def repo() -> str:
+    """Which GitHub repo to update from.
+
+    Resolved per call rather than frozen at import time. An install made from a
+    fork records that fork in its manifest and has to keep updating from it,
+    even though the code it just installed defaults to upstream. The same
+    indirection is what let this project survive being renamed.
+    """
+    override = os.environ.get("CLAUDE_SWITCH_REPO")
+    if override:
+        return override
+    return read_manifest().get("repo") or DEFAULT_REPO
+
+
+def install_url() -> str:
+    return f"https://raw.githubusercontent.com/{DEFAULT_REPO}/main/install.sh"
+
+
 def installed_versions(root=None):
     """Version directory names, newest install first."""
     path = versions_dir(root)
@@ -145,23 +168,25 @@ def _http(url: str, timeout: int = 30,
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="ignore").strip()
         if exc.code == 403 and "rate limit" in detail.lower():
-            raise CliError("GitHub rate limit reached - retry in a while, "
-                           "or set GITHUB_TOKEN to raise the limit")
+            raise HttpError("GitHub rate limit reached - retry in a while, "
+                            "or set GITHUB_TOKEN to raise the limit", 403)
         if exc.code == 404:
-            raise CliError(f"not found on GitHub: {url}")
-        raise CliError(f"GitHub returned HTTP {exc.code} for {url}"
-                       f"{' - ' + detail[:160] if detail else ''}")
+            raise HttpError(f"not found on GitHub: {url}", 404)
+        raise HttpError(f"GitHub returned HTTP {exc.code} for {url}"
+                        f"{' - ' + detail[:160] if detail else ''}", exc.code)
     except urllib.error.URLError as exc:
-        raise CliError(f"cannot reach GitHub - {exc.reason}")
+        raise HttpError(f"cannot reach GitHub - {exc.reason}")
 
 
 def _remote_version(sha: str) -> str:
     """The VERSION file at a commit. Pinned by sha to dodge CDN staleness."""
-    url = f"https://raw.githubusercontent.com/{REPO}/{sha}/VERSION"
+    url = f"https://raw.githubusercontent.com/{repo()}/{sha}/VERSION"
     try:
         text = _http(url, accept="text/plain").decode("utf-8")
-    except CliError:
-        return "0.0.0"  # published before VERSION existed
+    except HttpError as exc:
+        if exc.status == 404:
+            return "0.0.0"  # a commit from before VERSION existed
+        raise
     return text.strip() or "0.0.0"
 
 
@@ -171,19 +196,26 @@ def resolve_remote(channel: str):
         raise CliError(f"unknown channel '{channel}' - "
                        f"pick one of: {', '.join(CHANNELS)}")
 
+    name = repo()
     if channel == "stable":
-        tags = json.loads(
-            _http(f"https://api.github.com/repos/{REPO}/tags?per_page=1"))
-        if not tags:
-            raise CliError(f"{REPO} has no tags yet - "
+        # /releases/latest rather than the tag list: GitHub defines it as the
+        # newest non-draft, non-prerelease release, whereas the order tags come
+        # back in is not guaranteed to be chronological.
+        try:
+            release = json.loads(_http(
+                f"https://api.github.com/repos/{name}/releases/latest"))
+        except HttpError as exc:
+            if exc.status != 404:
+                raise
+            raise CliError(f"{name} has published no release yet - "
                            "use `claude-switch update --channel main`")
-        ref, sha = tags[0]["name"], tags[0]["commit"]["sha"]
+        ref = release["tag_name"]
     else:
-        commit = json.loads(
-            _http(f"https://api.github.com/repos/{REPO}/commits/main"))
-        ref, sha = "main", commit["sha"]
+        ref = "main"
 
-    return ref, sha, _remote_version(sha)
+    commit = json.loads(
+        _http(f"https://api.github.com/repos/{name}/commits/{ref}"))
+    return ref, commit["sha"], _remote_version(commit["sha"])
 
 
 def build_name(version: str, sha: str) -> str:
@@ -288,7 +320,7 @@ def _verify(tree: str) -> str:
 
 def fetch_build(sha: str, dest: str) -> None:
     """Download the tree at `sha` into `dest`, verified before it lands."""
-    url = f"https://codeload.github.com/{REPO}/tar.gz/{sha}"
+    url = f"https://codeload.github.com/{repo()}/tar.gz/{sha}"
     info(f"downloading {dim(url)}")
     blob = _http(url, timeout=120, accept="application/octet-stream")
 
@@ -331,7 +363,7 @@ def prune(root=None, keep=KEEP_VERSIONS) -> None:
 
 def _write_manifest(root, channel, ref, sha, version, previous, shim_dir):
     write_json(manifest_path(root), {
-        "repo": REPO,
+        "repo": repo(),
         "channel": channel,
         "ref": ref,
         "sha": sha,
@@ -364,7 +396,7 @@ def _refuse_checkout(action: str) -> int:
     print()
     print("  To keep working here:  git pull")
     print("  To switch to a managed install instead:")
-    print(f"     curl -fsSL {INSTALL_URL} | sh")
+    print(f"     curl -fsSL {install_url()} | sh")
     return 1
 
 
@@ -488,7 +520,7 @@ def _first_install(channel: str) -> int:
     root = install_root()
     previous = read_pointer(root)
 
-    info(f"installing {bold(REPO)} into {root}")
+    info(f"installing {bold(repo())} into {root}")
     ref, sha, version = resolve_remote(channel)
     name, shim_dir = _install_build(
         root, channel, ref, sha, version, previous=previous)
