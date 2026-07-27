@@ -4,7 +4,7 @@ import argparse
 import os
 import sys
 
-from . import VERSION, commands
+from . import VERSION, commands, updater
 from .paths import store_dir
 from .term import CliError, enable_debug, err
 
@@ -12,7 +12,8 @@ from .term import CliError, enable_debug, err
 # `claude-switch work` means `claude-switch use work`.
 KNOWN_ARGS = {
     "save", "use", "next", "list", "ls", "status", "remove", "rm",
-    "usage", "migrate", "sync", "doctor", "help", "-h", "--help", "--version",
+    "usage", "migrate", "sync", "doctor", "update", "version", "setup",
+    "help", "-h", "--help", "--version",
 }
 
 
@@ -73,6 +74,30 @@ def build_parser():
     p = sub.add_parser("doctor",
                        help="diagnose paths, credentials and API access")
     p.set_defaults(func=commands.cmd_doctor)
+
+    p = sub.add_parser("update", help="update to the newest published build")
+    p.add_argument("--check", action="store_true",
+                   help="report whether an update exists, install nothing")
+    p.add_argument("--rollback", action="store_true",
+                   help="go back to the previously installed build")
+    p.add_argument("--channel", choices=updater.CHANNELS,
+                   help="main tracks every push, stable tracks git tags "
+                        "(default: whatever was installed)")
+    p.add_argument("--force", action="store_true",
+                   help="reinstall even when already up to date")
+    p.set_defaults(func=commands.cmd_update)
+
+    p = sub.add_parser("version",
+                       help="show the installed build, channel and paths")
+    p.set_defaults(func=commands.cmd_version)
+
+    p = sub.add_parser("setup",
+                       help="rebuild the claude-* launchers and PATH entry")
+    p.add_argument("--bootstrap", action="store_true",
+                   help=argparse.SUPPRESS)  # used by install.sh / install.ps1
+    p.add_argument("--channel", choices=updater.CHANNELS,
+                   help=argparse.SUPPRESS)
+    p.set_defaults(func=commands.cmd_setup)
 
     return parser
 

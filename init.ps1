@@ -1,7 +1,14 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-    Install claude-switch / claude-next / claude-usage into your PowerShell profile.
+    Point your PowerShell profile at *this checkout* - for hacking on the tool.
+
+.DESCRIPTION
+    Commands run straight out of the working tree, so an edit takes effect with
+    no reinstall, and updates come from `git pull`.
+
+    For normal use install a managed copy instead, which can self-update:
+      irm https://raw.githubusercontent.com/hairbui76/claude-code-multi-account-switch/main/install.ps1 | iex
 #>
 
 $ErrorActionPreference = 'Stop'
@@ -38,7 +45,7 @@ $switch = Join-Path $dir 'bin\claude-switch.ps1'
 
 $block = @"
 $begin
-# Managed by init.ps1 - edit the repo, not this block.
+# Managed by init.ps1 (dev checkout at $dir) - edit the repo, not this block.
 function claude-switch { & '$switch' @args }
 function claude-next   { & '$switch' next @args }
 function claude-usage  { & '$switch' usage @args }
@@ -73,5 +80,8 @@ Write-Host '  claude-switch status        Show the current account'
 Write-Host '  claude-next                 Switch to the next account'
 Write-Host '  claude-usage                Usage for every account'
 Write-Host '  claude-switch doctor        Diagnose setup problems'
+Write-Host ''
+Write-Host 'This is a dev checkout: update it with `git pull`.'
+Write-Host '`claude-switch update` only works on a managed install.'
 Write-Host ''
 Write-Host 'Upgrading from v1? Run: claude-switch migrate' -ForegroundColor Yellow

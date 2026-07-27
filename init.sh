@@ -1,5 +1,11 @@
 #!/usr/bin/env sh
-# Install claude-switch / claude-next / claude-usage into your shell rc files.
+# Point your shell at *this checkout* - for hacking on the tool itself.
+# Commands run straight out of the working tree, so an edit takes effect with
+# no reinstall, and updates come from `git pull`.
+#
+# For normal use install a managed copy instead, which can self-update:
+#   curl -fsSL https://raw.githubusercontent.com/hairbui76/claude-code-multi-account-switch/main/install.sh | sh
+#
 # Supports bash and zsh, on Linux / macOS / Git Bash on Windows.
 
 set -e
@@ -72,7 +78,7 @@ for rc in $RC_FILES; do
 
     cat >> "$tmp" <<EOF
 $BEGIN
-# Managed by init.sh - edit the repo, not this block.
+# Managed by init.sh (dev checkout at $DIR) - edit the repo, not this block.
 alias claude-switch="$SWITCH"
 alias claude-next="$SWITCH next"
 alias claude-usage="$SWITCH usage"
@@ -97,5 +103,8 @@ echo "  claude-switch status        Show the current account"
 echo "  claude-next                 Switch to the next account"
 echo "  claude-usage                Usage for every account"
 echo "  claude-switch doctor        Diagnose setup problems"
+echo ""
+echo "This is a dev checkout: update it with \`git pull\`."
+echo "\`claude-switch update\` only works on a managed install."
 echo ""
 echo "Upgrading from v1? Run: claude-switch migrate"

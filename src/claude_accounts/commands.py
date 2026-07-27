@@ -4,7 +4,7 @@ import os
 import shutil
 import time
 
-from . import migrate
+from . import migrate, updater
 from .api import (OAUTH_CLIENT_ID, TOKEN_URL, USAGE_URL, ApiError, fetch_usage,
                   fmt_pct, fmt_reset, http_json, token_for)
 from .credentials import oauth_block, read_credentials
@@ -228,7 +228,34 @@ def cmd_sync(args):
     return 0
 
 
+def cmd_update(args):
+    return updater.run(check=args.check, do_rollback=args.rollback,
+                       channel=args.channel, force=args.force)
+
+
+def cmd_version(args):
+    return updater.show_version()
+
+
+def cmd_setup(args):
+    return updater.setup(bootstrap=args.bootstrap, channel=args.channel)
+
+
 def cmd_doctor(args):
+    print(bold("install"))
+    if updater.is_managed():
+        manifest = updater.read_manifest()
+        spare = updater.installed_versions()[1:]
+        print(f"  kind:    managed  {dim(updater.install_root())}")
+        print(f"  build:   {updater.read_pointer() or yellow('unset')}"
+              f"  {dim('channel ' + manifest.get('channel', '?'))}")
+        print(f"  shims:   {manifest.get('shim_dir') or yellow('unknown')}")
+        print(f"  spare:   {', '.join(spare) or dim('none')}")
+    else:
+        print(f"  kind:    source checkout  {dim(updater.tree_root())}")
+        print(dim("           update it with `git pull`"))
+
+    print()
     print(bold("paths"))
     for label, path in (
         ("config", claude_config_path()),
