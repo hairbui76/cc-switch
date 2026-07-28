@@ -336,6 +336,9 @@ approve pull requests`. The `permissions:` block in the workflow raises what
 `GITHUB_TOKEN` is allowed to do, but that checkbox is a repo-level veto on top
 of it and cannot be granted from the workflow file.
 
+After granting it, start a run from **Actions → release-please → Run workflow**
+rather than pushing a throwaway commit.
+
 The alternative, if you would rather not enable it, is a fine-grained PAT with
 `contents: write` and `pull-requests: write`, stored as a repository secret and
 referenced instead of `secrets.GITHUB_TOKEN`.

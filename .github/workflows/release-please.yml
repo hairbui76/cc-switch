@@ -19,6 +19,9 @@ on:
   push:
     branches:
       - main
+  # Lets a run be started by hand - after granting the permission below, for
+  # instance - without having to invent a commit to push.
+  workflow_dispatch:
 
 permissions:
   contents: write
