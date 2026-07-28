@@ -518,10 +518,18 @@ def setup(bootstrap=False, channel=None) -> int:
 
 def _first_install(channel: str) -> int:
     root = install_root()
-    previous = read_pointer(root)
+    current = read_pointer(root)
 
     info(f"installing {bold(repo())} into {root}")
     ref, sha, version = resolve_remote(channel)
+
+    # Re-running the installer over the build already active must not record
+    # that build as its own rollback target, or the previous one is lost and
+    # `update --rollback` has nowhere to go.
+    previous = current
+    if current == build_name(version, sha):
+        previous = read_manifest(root).get("previous")
+
     name, shim_dir = _install_build(
         root, channel, ref, sha, version, previous=previous)
 
@@ -544,10 +552,12 @@ def _first_install(channel: str) -> int:
     print("  claude-usage                Usage for every account")
     print("  claude-switch update        Update to the newest build")
     print("  claude-switch doctor        Diagnose setup problems")
-    if previous:
-        print()
-        print(dim(f"  upgraded over {previous}"))
+    # Keyed on what was active before this run, not on the rollback target:
+    # re-installing the build you already have leaves `previous` pointing
+    # further back, and that is not a first-time install.
+    print()
+    if current:
+        print(dim(f"  replaced {current}"))
     else:
-        print()
         print(yellow("Upgrading from v1? Run: claude-switch migrate"))
     return 0
