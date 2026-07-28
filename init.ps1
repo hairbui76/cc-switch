@@ -50,10 +50,7 @@ $switch = Join-Path $dir 'bin\claude-switch.ps1'
 $block = @"
 $begin
 # Managed by init.ps1 (dev checkout at $dir) - edit the repo, not this block.
-function claude-switch { & '$switch' @args }
-function claude-next   { & '$switch' next @args }
-function claude-usage  { & '$switch' usage @args }
-function claude-sync   { & '$switch' sync @args }
+function cc { & '$switch' @args }
 $end
 "@
 
@@ -81,15 +78,15 @@ Write-Host "  . `$PROFILE.CurrentUserAllHosts"
 Write-Host '  (or just open a new terminal)'
 Write-Host ''
 Write-Host 'Commands:'
-Write-Host '  claude-switch save <name>   Save the account you are logged in as'
-Write-Host '  claude-switch <name>        Switch to an account'
-Write-Host '  claude-switch list          List saved accounts'
-Write-Host '  claude-switch status        Show the current account'
-Write-Host '  claude-next                 Switch to the next account'
-Write-Host '  claude-usage                Usage for every account'
-Write-Host '  claude-switch doctor        Diagnose setup problems'
+Write-Host '  cc save <name>   Save the account you are logged in as'
+Write-Host '  cc <name>        Switch to an account'
+Write-Host '  cc list          List saved accounts'
+Write-Host '  cc status        Show the current account'
+Write-Host '  cc next          Switch to the next account'
+Write-Host '  cc usage         Usage for every account'
+Write-Host '  cc doctor        Diagnose setup problems'
 Write-Host ''
 Write-Host 'This is a dev checkout: update it with `git pull`.'
-Write-Host '`claude-switch update` only works on a managed install.'
+Write-Host '`cc update` only works on a managed install.'
 Write-Host ''
-Write-Host 'Upgrading from v1? Run: claude-switch migrate' -ForegroundColor Yellow
+Write-Host 'Upgrading from v1? Run: cc migrate' -ForegroundColor Yellow

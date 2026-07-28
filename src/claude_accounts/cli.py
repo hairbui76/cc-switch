@@ -4,12 +4,12 @@ import argparse
 import os
 import sys
 
-from . import VERSION, commands, updater
+from . import VERSION, commands, shims, updater
 from .paths import store_dir
 from .term import CliError, enable_debug, err
 
 # Anything not in here is treated as an account name, so that
-# `claude-switch work` means `claude-switch use work`.
+# `cc work` means `cc use work`.
 KNOWN_ARGS = {
     "save", "use", "next", "list", "ls", "status", "remove", "rm",
     "usage", "migrate", "sync", "doctor", "update", "version", "setup",
@@ -19,11 +19,11 @@ KNOWN_ARGS = {
 
 def build_parser():
     parser = argparse.ArgumentParser(
-        prog="claude-switch",
+        prog=shims.command_name(),
         description="Switch between multiple Claude Code accounts. Sessions, "
                     "settings and history are shared by every account.",
-        epilog="Shorthand: `claude-switch <name>` is the same as "
-               "`claude-switch use <name>`.",
+        epilog=f"Shorthand: `{shims.command_name()} <name>` is the same "
+               f"as `{shims.command_name()} use <name>`.",
     )
     parser.add_argument("--version", action="version",
                         version=f"%(prog)s {VERSION}")
@@ -106,7 +106,7 @@ def main(argv=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
 
     # Insert the implicit `use`, skipping any leading global flags so that
-    # `claude-switch --debug work` still resolves to an account name.
+    # `cc --debug work` still resolves to an account name.
     first = next((i for i, a in enumerate(argv) if not a.startswith("-")), None)
     if first is not None and argv[first] not in KNOWN_ARGS:
         argv.insert(first, "use")

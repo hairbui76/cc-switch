@@ -4,7 +4,7 @@ import os
 import shutil
 import time
 
-from . import migrate, updater
+from . import migrate, shims, updater
 from .api import (OAUTH_CLIENT_ID, TOKEN_URL, USAGE_URL, ApiError, fetch_usage,
                   fmt_pct, fmt_reset, http_json, token_for)
 from .credentials import oauth_block, read_credentials
@@ -96,7 +96,8 @@ def cmd_switch(args):
 def cmd_next(args):
     names = list_accounts()
     if not names:
-        raise CliError("no accounts saved yet. Run: claude-switch save <name>")
+        raise CliError("no accounts saved yet. Run: "
+                       f"{shims.command_name()} save <name>")
     if len(names) == 1:
         ok(f"only one account ({bold(names[0])})")
         return 0
@@ -115,7 +116,8 @@ def cmd_next(args):
 def cmd_list(args):
     names = list_accounts()
     if not names:
-        warn("no accounts saved yet. Run: claude-switch save <name>")
+        warn("no accounts saved yet. Run: "
+             f"{shims.command_name()} save <name>")
         return 0
 
     current = current_account_name()
@@ -182,7 +184,8 @@ def cmd_remove(args):
 def cmd_usage(args):
     names = [args.name] if args.name else list_accounts()
     if not names:
-        raise CliError("no accounts saved yet. Run: claude-switch save <name>")
+        raise CliError("no accounts saved yet. Run: "
+                       f"{shims.command_name()} save <name>")
 
     rows = []
     for name in names:
@@ -218,13 +221,13 @@ def cmd_migrate(args):
 
 
 def cmd_sync(args):
-    info("sessions are shared automatically now - "
-         "`claude-sync` is no longer needed.")
+    info(f"sessions are shared automatically now - `{shims.command_name()} "
+         "sync` is no longer needed.")
     info("Switching only swaps credentials; "
          "~/.claude/projects is never touched.")
     if migrate.has_legacy_dirs():
-        warn("found v1 snapshot dir(s). Run `claude-switch migrate` to fold "
-             "their sessions into the shared directory.")
+        warn(f"found v1 snapshot dir(s). Run `{shims.command_name()} "
+             "migrate` to fold their sessions into the shared directory.")
     return 0
 
 

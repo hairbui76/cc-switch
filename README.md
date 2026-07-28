@@ -4,7 +4,7 @@ Switch between multiple Claude Code accounts on **Windows, macOS and Linux** —
 sessions, settings and history shared across every account.
 
 ```text
-$ claude-usage
+$ cc usage
   ACCOUNT   SESSION (5h)             WEEK (7d)
 * work       21% Tue 00:50 (3h33m)    20% Mon 06:00 (6d8h)
   personal    4% Tue 02:15 (4h58m)     9% Mon 06:00 (6d8h)
@@ -56,24 +56,42 @@ irm https://raw.githubusercontent.com/hairbui76/cc-switch/main/install.ps1 | iex
 
 Then open a new terminal, or `source ~/.bashrc` — the installer tells you which.
 
-No git required. The installer downloads a pinned build over HTTPS, puts real
-`claude-switch` / `claude-next` / `claude-usage` executables on your `PATH`, and
-records where they came from so the tool can update itself later.
+No git required. The installer downloads a pinned build over HTTPS, puts a
+real `cc` executable on your `PATH`, and records where it came from so the tool
+can update itself later.
 
-They are **executables, not shell aliases**, so they also work from cron, from
-scripts, and over `ssh host claude-usage`.
+It is an **executable, not a shell alias**, so it also works from cron, from
+scripts, and over `ssh host cc usage`.
+
+### A note on the name `cc`
+
+On Unix, `cc` is traditionally the C compiler (`/usr/bin/cc`, usually a symlink
+to gcc or clang), and the installer puts its own directory **first** on `PATH`.
+On a machine that compiles anything, `cc` will therefore resolve to this tool
+and any `Makefile` defaulting to `CC=cc` will break.
+
+The installer checks for this and warns if it finds another `cc`. To install
+under a different name:
+
+```bash
+CLAUDE_SWITCH_NAME=ccs curl -fsSL https://raw.githubusercontent.com/hairbui76/cc-switch/main/install.sh | sh
+```
+
+Every message the tool prints then refers to `ccs`, because the launcher tells
+the CLI which name it was invoked under. Re-running `ccs setup` keeps that name;
+switching names retires the old launcher rather than leaving two behind.
 
 ## Updating
 
 ```bash
-claude-switch update             # fetch and install the newest build
-claude-switch update --check     # only report whether one exists
-claude-switch update --rollback  # go back to the build you had before
-claude-switch version            # what is installed, from where
+cc update             # fetch and install the newest build
+cc update --check     # only report whether one exists
+cc update --rollback  # go back to the build you had before
+cc version            # what is installed, from where
 ```
 
-Nothing to pull, nothing to re-source: the launchers resolve the active build at
-call time, so an update takes effect on the very next command.
+Nothing to pull, nothing to re-source: the launcher resolves the active build
+at call time, so an update takes effect on the very next command.
 
 ### Channels
 
@@ -87,11 +105,10 @@ non-draft, non-prerelease release — the tag listing endpoint is not guaranteed
 come back in chronological order.
 
 ```bash
-claude-switch update --channel stable    # switch channel and update
+cc update --channel stable    # switch channel and update
 ```
 
-The channel you pick is remembered, so later `claude-switch update` runs stay on
-it.
+The channel you pick is remembered, so later `cc update` runs stay on it.
 
 A build is identified as `<version>-<short sha>`, e.g. `2.1.0-a1b2c3d`. The sha
 is what makes two pushes that share a version number distinguishable, so a fix
@@ -105,20 +122,45 @@ pushed without a version bump is still detected as an update.
   versions/2.0.0-9f8e7d6/    kept so --rollback has somewhere to go
   current                    one line: the active build's directory name
   manifest.json              repo, channel, sha, previous build
-~/.local/bin/claude-switch   launcher, reads `current` on every call
+~/.local/bin/cc              launcher, reads `current` on every call
 ```
 
 Updating writes a new directory and then rewrites one line in `current`. Nothing
 is overwritten in place, so an interrupted update cannot leave a half-replaced
 install behind, and a broken build is one pointer rewrite away from being undone.
 
-On Windows the root is `%LOCALAPPDATA%\claude-switch` and the launchers go in
+On Windows the root is `%LOCALAPPDATA%\claude-switch` and the launcher goes in
 `%LOCALAPPDATA%\claude-switch\bin`, which the installer adds to your user `PATH`.
+A `cc.cmd` is written alongside the extensionless `cc`, so cmd.exe, PowerShell
+and Git Bash all find a working launcher.
 
-### If the commands go missing
+### Coming from `claude-switch`
+
+Releases up to 2.2.1 installed three commands: `claude-switch`, `claude-next`
+and `claude-usage`. They are now one `cc`, with the old two as subcommands.
+
+`cc update` alone will **not** rename anything: an update is carried out by the
+copy already installed, so it writes the launchers that version knows about.
+Re-run the installer once instead — it runs the new code, which writes `cc` and
+removes the launchers it previously generated:
 
 ```bash
-claude-switch setup    # rebuild the launchers and the PATH entry
+curl -fsSL https://raw.githubusercontent.com/hairbui76/cc-switch/main/install.sh | sh
+```
+
+| Before | Now |
+| --- | --- |
+| `claude-switch save work` | `cc save work` |
+| `claude-switch work` | `cc work` |
+| `claude-next` | `cc next` |
+| `claude-usage` | `cc usage` |
+
+Saved accounts are untouched by any of this.
+
+### If the command goes missing
+
+```bash
+cc setup    # rebuild the launcher and the PATH entry
 ```
 
 Re-running the `curl` installer also works and is equivalent to a fresh install.
@@ -134,10 +176,10 @@ cd cc-switch
 ```
 
 This points your shell at the working tree, so an edit takes effect immediately
-and updates come from `git pull`. `claude-switch update` deliberately refuses to
+and updates come from `git pull`. `cc update` deliberately refuses to
 run here — it would have to overwrite your checkout — and tells you so.
 
-`claude-switch version` and `claude-switch doctor` both report which mode you
+`cc version` and `cc doctor` both report which mode you
 are in.
 
 If PowerShell blocks `init.ps1`, allow local scripts for your user once:
@@ -152,16 +194,16 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 
 ```bash
 claude login                 # log in as usual
-claude-switch save work      # store that login as "work"
-claude-switch save           # or let it name the account from your email
+cc save work      # store that login as "work"
+cc save           # or let it name the account from your email
 ```
 
 ### Switch
 
 ```bash
-claude-switch work
-claude-switch personal
-claude-next                  # round-robin to the next account
+cc work
+cc personal
+cc next                      # round-robin to the next account
 ```
 
 The account you are leaving is auto-saved first, so rotated tokens are never
@@ -171,22 +213,22 @@ stored under a name derived from your email rather than being thrown away.
 ### Inspect
 
 ```bash
-claude-switch list           # all saved accounts, current one marked with *
-claude-switch status         # current account + token expiry
-claude-usage                 # usage for every account
-claude-usage work            # ...or just one
+cc list           # all saved accounts, current one marked with *
+cc status         # current account + token expiry
+cc usage                     # usage for every account
+cc usage work            # ...or just one
 ```
 
-`claude-usage` reads `GET /api/oauth/usage` with each account's stored token. It
+`cc usage` reads `GET /api/oauth/usage` with each account's stored token. It
 does **not** switch accounts to collect the numbers, and it refreshes an expired
 access token automatically.
 
 ### Manage
 
 ```bash
-claude-switch remove old-account
-claude-switch doctor         # diagnose install, paths, credentials, API access
-claude-switch update         # install the newest build
+cc remove old-account
+cc doctor         # diagnose install, paths, credentials, API access
+cc update         # install the newest build
 ```
 
 ## Troubleshooting
@@ -195,7 +237,7 @@ There is no log file. Add `--debug` to any command (or set
 `CLAUDE_SWITCH_DEBUG=1`) to trace every HTTP request on stderr:
 
 ```bash
-claude-usage --debug
+cc usage --debug
 ```
 
 ```text
@@ -204,10 +246,10 @@ claude-usage --debug
 [db]   -> 400 {"error": "invalid_grant", ...}
 ```
 
-`claude-switch doctor` checks both endpoints the tool depends on, so a broken
+`cc doctor` checks both endpoints the tool depends on, so a broken
 URL is distinguishable from a broken token.
 
-| `claude-usage` says | Meaning |
+| `cc usage` says | Meaning |
 | --- | --- |
 | `refresh token rejected` | The stored refresh token is dead. Switch to that account and run `claude login`. |
 | `token rejected` | The access token was refused and could not be refreshed. Log in again. |
@@ -221,7 +263,7 @@ v1 stored a full copy of `~/.claude` per account, which is what caused sessions
 to be rolled back on every switch. To import those backups:
 
 ```bash
-claude-switch migrate
+cc migrate
 ```
 
 This reads the credentials out of each `~/.claude-accounts/<name>-dir/`
@@ -230,8 +272,8 @@ snapshot, rewrites it in the new format, and copies any session files that exist
 are never overwritten). Once you have confirmed every account works, the old
 `*-dir` folders can be deleted.
 
-`claude-sync` still exists but is now a no-op that tells you sessions are
-already shared.
+`cc sync` still exists but is now a no-op that tells you sessions are already
+shared.
 
 ## Notes
 
@@ -254,6 +296,7 @@ already shared.
 | `CLAUDE_ACCOUNTS_DIR` | where saved accounts are stored |
 | `CLAUDE_SWITCH_PYTHON` | interpreter to use |
 | `CLAUDE_SWITCH_HOME` | install root (default `~/.claude-switch`) |
+| `CLAUDE_SWITCH_NAME` | what to call the command (default `cc`) |
 | `CLAUDE_SWITCH_BIN` | directory the launchers go into |
 | `CLAUDE_SWITCH_CHANNEL` | channel for a fresh install: `main` or `stable` |
 | `CLAUDE_SWITCH_REPO` | `owner/name` to install and update from, e.g. a fork |
@@ -274,9 +317,6 @@ init.ps1                    the same for PowerShell
 bin/                        entry points only - no logic
   claude-switch.sh   .ps1     find a usable Python, hand off to the launcher
   claude-accounts.py          launcher: puts src/ on sys.path, calls the CLI
-  claude-next.sh              shortcuts for `claude-switch <subcommand>`
-  claude-usage.sh
-  claude-sync.sh
 src/claude_accounts/        all logic, stdlib only
   cli.py                      argument parsing, entry point
   commands.py                 one function per subcommand
@@ -352,7 +392,7 @@ to be picked up.
 
 Clients verify a download by running its `--version` before activating it, and
 only then rewrite the `current` pointer. A push that fails to import therefore
-makes `claude-switch update` fail with a message and leave the working build in
+makes `cc update` fail with a message and leave the working build in
 place; it cannot brick an install.
 
 The package can also be run directly:

@@ -85,10 +85,7 @@ for rc in $RC_FILES; do
     cat >> "$tmp" <<EOF
 $BEGIN
 # Managed by init.sh (dev checkout at $DIR) - edit the repo, not this block.
-alias claude-switch="$SWITCH"
-alias claude-next="$SWITCH next"
-alias claude-usage="$SWITCH usage"
-alias claude-sync="$SWITCH sync"
+alias cc="$SWITCH"
 $END
 EOF
 
@@ -102,15 +99,15 @@ for rc in $RC_FILES; do echo "  source $rc"; done
 echo "  (or just open a new terminal)"
 echo ""
 echo "Commands:"
-echo "  claude-switch save <name>   Save the account you are logged in as"
-echo "  claude-switch <name>        Switch to an account"
-echo "  claude-switch list          List saved accounts"
-echo "  claude-switch status        Show the current account"
-echo "  claude-next                 Switch to the next account"
-echo "  claude-usage                Usage for every account"
-echo "  claude-switch doctor        Diagnose setup problems"
+echo "  cc save <name>   Save the account you are logged in as"
+echo "  cc <name>        Switch to an account"
+echo "  cc list          List saved accounts"
+echo "  cc status        Show the current account"
+echo "  cc next          Switch to the next account"
+echo "  cc usage         Usage for every account"
+echo "  cc doctor        Diagnose setup problems"
 echo ""
 echo "This is a dev checkout: update it with \`git pull\`."
-echo "\`claude-switch update\` only works on a managed install."
+echo "\`cc update\` only works on a managed install."
 echo ""
-echo "Upgrading from v1? Run: claude-switch migrate"
+echo "Upgrading from v1? Run: cc migrate"

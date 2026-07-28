@@ -4,7 +4,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/hairbui76/cc-switch/main/install.sh | sh
 #
 # Needs curl (or wget), tar and Python 3.7+. Does not need git.
-# Re-running it is also how you upgrade, though `claude-switch update` is
+# Re-running it is also how you upgrade, though `cc update` is
 # quicker once installed.
 #
 # Environment overrides:
@@ -13,6 +13,7 @@
 #   CLAUDE_SWITCH_BIN      directory the claude-* launchers go into
 #   CLAUDE_SWITCH_PYTHON   interpreter to use
 #   CLAUDE_SWITCH_REPO     owner/name to install from
+#   CLAUDE_SWITCH_NAME     what to call the command (default: cc)
 
 set -e
 

@@ -11,6 +11,7 @@ import shutil
 import sys
 from datetime import datetime, timezone
 
+from . import shims
 from .credentials import oauth_block, read_credentials, write_credentials
 from .jsonio import read_json, write_json
 from .paths import (account_path, claude_config_path, config_backup_path,
@@ -80,11 +81,13 @@ def load_account(name: str):
     data = read_json(account_path(name))
     if data is None:
         raise CliError(
-            f"account '{name}' not found. Save it with: claude-switch save {name}"
+            f"account '{name}' not found. "
+            f"Save it with: {shims.command_name()} save {name}"
         )
     if data.get("version") != STORE_VERSION:
         raise CliError(
-            f"account '{name}' uses the old v1 format. Run: claude-switch migrate"
+            f"account '{name}' uses the old v1 format. "
+            f"Run: {shims.command_name()} migrate"
         )
     return data
 

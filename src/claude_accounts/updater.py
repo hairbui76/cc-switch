@@ -207,8 +207,9 @@ def resolve_remote(channel: str):
         except HttpError as exc:
             if exc.status != 404:
                 raise
-            raise CliError(f"{name} has published no release yet - "
-                           "use `claude-switch update --channel main`")
+            raise CliError(
+                f"{name} has published no release yet - use "
+                f"`{shims.command_name()} update --channel main`")
         ref = release["tag_name"]
     else:
         ref = "main"
@@ -372,6 +373,7 @@ def _write_manifest(root, channel, ref, sha, version, previous, shim_dir):
         "installed_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "previous": previous,
         "shim_dir": shim_dir,
+        "command": shims.installed_name(),
     })
 
 
@@ -380,7 +382,7 @@ def _install_build(root, channel, ref, sha, version, previous=None):
     name = build_name(version, sha)
     fetch_build(sha, os.path.join(versions_dir(root), name))
     activate(name, root)
-    shim_dir = shims.write_shims(root)
+    shim_dir = shims.write_shims(root, shims.installed_name())
     _write_manifest(root, channel, ref, sha, version, previous, shim_dir)
     prune(root)
     return name, shim_dir
@@ -401,7 +403,7 @@ def _refuse_checkout(action: str) -> int:
 
 
 def show_version() -> int:
-    print(f"{bold('claude-switch')} {VERSION}")
+    print(f"{bold(shims.command_name())} {VERSION}")
 
     if not is_managed():
         print(f"  {'source'.ljust(9)} {tree_root()}  {dim('(git checkout)')}")
@@ -422,7 +424,8 @@ def show_version() -> int:
     if manifest.get("previous"):
         print(f"  {'rollback'.ljust(9)} {manifest['previous']}")
     print()
-    print(dim("  check for a newer build with: claude-switch update --check"))
+    print(dim("  check for a newer build with: "
+              f"{shims.command_name()} update --check"))
     return 0
 
 
@@ -440,12 +443,12 @@ def rollback() -> int:
 
     current = read_pointer(root)
     activate(previous, root)
-    shims.write_shims(root)
+    shims.write_shims(root, shims.installed_name())
     manifest["previous"] = current
     manifest["build"] = previous
     write_json(manifest_path(root), manifest)
     ok(f"rolled back to {bold(previous)}")
-    info("re-run `claude-switch update` when a fix lands")
+    info(f"re-run `{shims.command_name()} update` when a fix lands")
     return 0
 
 
@@ -471,7 +474,8 @@ def run(check=False, do_rollback=False, channel=None, force=False) -> int:
             ok(f"already up to date ({latest})")
         else:
             warn(f"update available: {bold(latest)}")
-            print(dim("     run `claude-switch update` to install it"))
+            print(dim(f"     run `{shims.command_name()} update` "
+                      "to install it"))
         return 0
     if reinstall and not force:
         ok(f"already up to date ({latest})")
@@ -490,7 +494,8 @@ def run(check=False, do_rollback=False, channel=None, force=False) -> int:
     ok(f"updated {dim(current or '?')} -> {green(latest)}")
     info("shims resolve the new version immediately - no shell restart needed")
     if current:
-        print(dim("     roll back with: claude-switch update --rollback"))
+        print(dim(f"     roll back with: {shims.command_name()} "
+                  "update --rollback"))
     return 0
 
 
@@ -506,12 +511,14 @@ def setup(bootstrap=False, channel=None) -> int:
     if not read_pointer(root):
         raise CliError(f"no active version in {root} - re-run the installer")
 
-    shim_dir = shims.write_shims(root)
-    ok(f"shims rebuilt in {shim_dir}")
-    shims.ensure_on_path(shim_dir)
+    name = shims.installed_name()
+    shim_dir = shims.write_shims(root, name)
+    ok(f"`{bold(name)}` rebuilt in {shim_dir}")
+    shims.ensure_on_path(shim_dir, name)
 
     manifest = read_manifest(root)
     manifest["shim_dir"] = shim_dir
+    manifest["command"] = name
     write_json(manifest_path(root), manifest)
     return 0
 
@@ -535,7 +542,7 @@ def _first_install(channel: str) -> int:
 
     print()
     ok(f"installed {bold(name)}  {dim('channel ' + channel)}")
-    shims.ensure_on_path(shim_dir)
+    shims.ensure_on_path(shim_dir, shims.installed_name())
 
     print()
     print(bold("Activate it now:"))
@@ -544,14 +551,18 @@ def _first_install(channel: str) -> int:
 
     print()
     print(bold("Commands:"))
-    print("  claude-switch save <name>   Save the account now logged in")
-    print("  claude-switch <name>        Switch to an account")
-    print("  claude-switch list          List saved accounts")
-    print("  claude-switch status        Show the current account")
-    print("  claude-next                 Switch to the next account")
-    print("  claude-usage                Usage for every account")
-    print("  claude-switch update        Update to the newest build")
-    print("  claude-switch doctor        Diagnose setup problems")
+    cmd = shims.command_name()
+    for usage, blurb in (
+        (f"{cmd} save <name>", "Save the account now logged in"),
+        (f"{cmd} <name>", "Switch to an account"),
+        (f"{cmd} list", "List saved accounts"),
+        (f"{cmd} status", "Show the current account"),
+        (f"{cmd} next", "Switch to the next account"),
+        (f"{cmd} usage", "Usage for every account"),
+        (f"{cmd} update", "Update to the newest build"),
+        (f"{cmd} doctor", "Diagnose setup problems"),
+    ):
+        print(f"  {usage.ljust(26)}{blurb}")
     # Keyed on what was active before this run, not on the rollback target:
     # re-installing the build you already have leaves `previous` pointing
     # further back, and that is not a first-time install.
@@ -559,5 +570,6 @@ def _first_install(channel: str) -> int:
     if current:
         print(dim(f"  replaced {current}"))
     else:
-        print(yellow("Upgrading from v1? Run: claude-switch migrate"))
+        print(yellow("Upgrading from v1? Run: "
+                     f"{shims.command_name()} migrate"))
     return 0
