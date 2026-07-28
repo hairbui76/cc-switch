@@ -204,24 +204,38 @@ def _remove_superseded(target: str, keep: str) -> None:
             warn(f"could not remove {path}: {exc}")
 
 
-def _warn_if_shadowing(target: str, name: str) -> None:
-    """Point out an existing command of the same name earlier or later on PATH.
+def _path_without(directory: str) -> str:
+    """$PATH with `directory` removed."""
+    want = os.path.normcase(os.path.normpath(directory))
+    return os.pathsep.join(
+        entry for entry in os.environ.get("PATH", "").split(os.pathsep)
+        if entry and os.path.normcase(os.path.normpath(entry)) != want)
 
-    `cc` is the traditional C compiler on Unix, and the PATH block prepends the
-    shim directory - so on a build machine this silently takes over `cc` and
-    breaks any Makefile that defaults to it.
+
+def _warn_if_shadowing(target: str, name: str) -> None:
+    """Point out an existing command of the same name elsewhere on PATH.
+
+    `cc` is the traditional C compiler on Unix and the PATH block prepends the
+    shim directory, so on a build machine this takes over `cc` and breaks any
+    Makefile that defaults to it. Nothing is deleted - the other command is
+    still on disk, just no longer first.
+
+    The search deliberately excludes our own directory. Looking at the plain
+    PATH finds the shim written moments ago whenever that directory is already
+    on PATH, which it is by default on Debian and Ubuntu - so the conflict went
+    unreported on exactly the machines that have a compiler to lose.
     """
-    existing = shutil.which(name)
+    existing = shutil.which(name, path=_path_without(target))
     if not existing:
         return
-    if os.path.dirname(os.path.abspath(existing)) == os.path.abspath(target):
-        return
 
-    warn(f"{bold(name)} already exists at {existing}")
-    print(dim(f"     {target} goes first on PATH, so `{name}` now means "
-              "this tool"))
-    print(dim("     to install under another name, re-run the installer "
-              "with CLAUDE_SWITCH_NAME=ccs"))
+    warn(f"{bold(name)} already existed at {existing}")
+    print(dim(f"     {target} goes first on PATH, so `{name}` now runs this "
+              "tool instead"))
+    print(dim(f"     that other {name} is untouched on disk - run it by full "
+              "path, or"))
+    print(dim("     rename this tool: re-run the installer with "
+              "CLAUDE_SWITCH_NAME=ccs"))
 
 
 def write_shims(root: str, name=None) -> str:
