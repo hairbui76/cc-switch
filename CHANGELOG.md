@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.1](https://github.com/hairbui76/cc-switch/compare/v3.0.0...v3.0.1) (2026-07-28)
+
+
+### Bug Fixes
+
+* report the PATH collision that renaming `cc` is meant to avoid ([0199b42](https://github.com/hairbui76/cc-switch/commit/0199b42b17cf1b2050a612e0b0f3d88a70c27ef0))
+
 ## [3.0.0](https://github.com/hairbui76/cc-switch/compare/v2.2.1...v3.0.0) (2026-07-28)
 
 
