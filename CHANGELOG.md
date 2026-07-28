@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.0.0](https://github.com/hairbui76/cc-switch/compare/v2.2.1...v3.0.0) (2026-07-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* the claude-switch, claude-next and claude-usage commands are replaced by cc. Re-run the installer to pick up the new launcher; saved accounts are unaffected.
+
+### Features
+
+* collapse the three commands into a single `cc` ([d4a731c](https://github.com/hairbui76/cc-switch/commit/d4a731cf799ba1e49b8ca99733897f4d65ae95d8))
+
 ## [2.2.1](https://github.com/hairbui76/cc-switch/compare/v2.2.0...v2.2.1) (2026-07-28)
 
 
