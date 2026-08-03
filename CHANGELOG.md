@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.2.0](https://github.com/hairbui76/cc-switch/compare/v3.1.0...v3.2.0) (2026-08-03)
+
+
+### Features
+
+* rename a saved account with `cc rename` ([f0d6b5b](https://github.com/hairbui76/cc-switch/commit/f0d6b5bbeb1bc0ed24a8810cc5a4a4b573f6dae9))
+
 ## [3.1.0](https://github.com/hairbui76/cc-switch/compare/v3.0.1...v3.1.0) (2026-08-03)
 
 
