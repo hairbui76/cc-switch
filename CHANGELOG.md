@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.1.0](https://github.com/hairbui76/cc-switch/compare/v3.0.1...v3.1.0) (2026-08-03)
+
+
+### Features
+
+* run a different account in each directory, several windows at once ([33da1d3](https://github.com/hairbui76/cc-switch/commit/33da1d34e5bca1a2a4b31f9071aea2f569bcc6bb))
+
 ## [3.0.1](https://github.com/hairbui76/cc-switch/compare/v3.0.0...v3.0.1) (2026-07-28)
 
 
