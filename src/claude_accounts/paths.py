@@ -41,3 +41,21 @@ def account_path(name: str) -> str:
 
 def config_backup_path() -> str:
     return os.path.join(store_dir(), ".claude.json.bak")
+
+
+def profiles_dir() -> str:
+    """Parent of the per-account config directories used by `cc run`."""
+    return os.path.join(store_dir(), "profiles")
+
+
+def profile_dir(name: str) -> str:
+    return os.path.join(profiles_dir(), name)
+
+
+def bindings_path() -> str:
+    """Which directory runs under which account.
+
+    A dotfile so `list_accounts`, which treats every *.json in the store as an
+    account, does not offer "bindings" as one.
+    """
+    return os.path.join(store_dir(), ".bindings.json")

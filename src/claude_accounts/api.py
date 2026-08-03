@@ -10,6 +10,7 @@ import urllib.error
 import urllib.request
 from datetime import datetime
 
+from . import profiles
 from .credentials import oauth_block, read_credentials, write_credentials
 from .store import current_account_uuid, save_account
 from .term import CliError, debug, dim, green, red, yellow
@@ -108,6 +109,11 @@ def refresh_tokens(blk):
     return new
 
 
+def _expires_at(blk) -> float:
+    value = blk.get("expiresAt")
+    return float(value) if isinstance(value, (int, float)) else 0.0
+
+
 def _fresh(blk) -> bool:
     expires_at = blk.get("expiresAt")
     if not isinstance(expires_at, (int, float)):
@@ -128,6 +134,13 @@ def token_for(data):
             return live["accessToken"]
 
     blk = oauth_block(data.get("credentials"))
+
+    # Same reasoning for an account bound to a directory: `cc run` gives it its
+    # own config directory, and Claude Code rotates the tokens in there.
+    inside = oauth_block(profiles.profile_credentials(data.get("name")))
+    if inside.get("accessToken") and _expires_at(inside) > _expires_at(blk):
+        debug(f"{data.get('name')}: using its profile's credentials")
+        blk = inside
     if not blk.get("accessToken"):
         raise CliError("no access token stored - log in again")
     if _fresh(blk):

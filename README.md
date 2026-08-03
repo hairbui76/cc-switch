@@ -34,6 +34,11 @@ account automatically**:
 There is nothing to sync. `claude --resume` sees the same sessions no matter
 which account you are on.
 
+Switching is machine-wide: every window follows the account you switch to. To
+run **one account per directory, several windows at once**, bind the directory
+and start Claude Code with `cc run` — see [Two accounts at the same
+time](#two-accounts-at-the-same-time-one-per-directory).
+
 ## Requirements
 
 - Python 3.7+ (standard library only — nothing to `pip install`)
@@ -231,6 +236,119 @@ cc doctor         # diagnose install, paths, credentials, API access
 cc update         # install the newest build
 ```
 
+## Two accounts at the same time, one per directory
+
+`cc use` swaps the *one* live login, so every Claude Code window on the machine
+follows it. Bind a directory instead and that directory gets its own account —
+and those windows run side by side:
+
+```bash
+cd ~/work/api     && cc bind work
+cd ~/side/scraper && cc bind personal
+
+cd ~/work/api     && cc run     # this window is work
+cd ~/side/scraper && cc run     # this one is personal, at the same time
+```
+
+`cc bind` with no name binds the account you are logged in as right now.
+Everything after `cc run` goes straight to Claude Code, so `cc run --resume`,
+`cc run --model opus` and `cc run mcp list` all work as usual.
+
+```bash
+cc bindings           # every directory -> account, with the one you are in marked
+cc unbind             # drop this directory's binding (the account is kept)
+cc status             # ... now also says which account this directory runs as
+```
+
+### How it works
+
+`cc run` starts Claude Code with `CLAUDE_CONFIG_DIR` pointed at a per-account
+**profile** — a second config directory holding *only* the two files that say
+who is logged in. Everything else is a link back to `~/.claude`, so the sharing
+guarantee is the same one the rest of this tool makes:
+
+```text
+~/.claude-accounts/profiles/work/
+  .credentials.json     this account's tokens        <- per account
+  .claude.json          identity + this profile's own state
+  projects -> ~/.claude/projects        sessions     <- shared, one copy on disk
+  settings.json -> ~/.claude/settings.json
+  skills/ plugins/ history.jsonl plans/ ...
+```
+
+Everything Claude Code puts in `~/.claude` is shared unless it names an
+account: `.credentials.json`, `.claude.json`, and the caches the server fills
+in per login (`policy-limits.json`, `remote-settings.json`, `statsig`,
+`backups`, `telemetry`, `debug`). Anything a future release adds is shared by
+default. `cc doctor` lists what ended up shared per profile.
+
+Profiles are keyed by account, not by directory, so ten repositories bound to
+`work` share one profile and one set of tokens — exactly what ten windows on one
+login do today.
+
+Tokens rotate while Claude Code runs, so `cc run` folds the profile's
+credentials back into the saved account when the window exits. That keeps
+`cc usage` and `cc status` reporting on tokens that still work. If a window is
+killed before it gets there, `cc sync` reconciles every profile.
+
+### Directory to account
+
+Resolved in this order, nearest first:
+
+| Source | Wins over | Use it for |
+| --- | --- | --- |
+| `CLAUDE_SWITCH_ACCOUNT` | everything | one-off overrides; `cc run` sets it for the window it starts, so a shell inside that window stays on the same account |
+| `.claude-account` in the directory | bindings | a repository that should carry the decision with it (one line: the account name) |
+| `cc bind` | — | the normal case; kept in `~/.claude-accounts/.bindings.json`, so nothing is added to your repositories |
+
+A directory inherits the binding of its nearest bound parent, so
+`cc bind work --path ~/work` covers every checkout under `~/work`. `cc run -a
+personal` ignores all of it for one command.
+
+### Anything that starts `claude` itself
+
+VS Code, a wrapper script, direnv, a long-lived tmux pane — `cc env` prints the
+two variables that put a whole shell on this directory's account:
+
+```bash
+eval "$(cc env)"        # then plain `claude` in this shell is that account
+cc env --format powershell
+```
+
+For a VS Code workspace, put the same value in
+`.vscode/settings.json` → `terminal.integrated.env.<platform>`:
+
+```json
+{
+  "terminal.integrated.env.windows": {
+    "CLAUDE_CONFIG_DIR": "C:\\Users\\you\\.claude-accounts\\profiles\\work"
+  }
+}
+```
+
+Only `cc run` syncs tokens back on exit, so run `cc sync` now and then if you
+launch Claude Code this way.
+
+### What is not shared
+
+- **`.claude.json` is per profile.** It is seeded from your live one the first
+  time — onboarding, trusted directories and project history come along — but
+  after that each account keeps its own. User-scope MCP servers added with
+  `claude mcp add` therefore have to be added per account; a project-scope
+  `.mcp.json` in the repository is shared by everyone.
+- **Windows has no unprivileged file symlinks**, so `settings.json` and
+  `history.jsonl` are hardlinked and directories become junctions. Claude Code
+  rewrites a file by renaming a new one over it, which breaks a hardlink — so
+  `cc run` re-links on launch and on exit, keeping whichever copy was written
+  last. Two windows editing settings at the same time is last-one-out-wins.
+- **macOS Keychain.** A profile keeps its tokens in
+  `<profile>/.credentials.json`, which is the copy Claude Code prefers when it
+  is there. If a bound window comes up as the wrong account, that is the thing
+  to report.
+
+`cc remove <name>` deletes the account, its profile and every binding pointing
+at it. Only links are removed — `~/.claude` is never touched.
+
 ## Troubleshooting
 
 There is no log file. Add `--debug` to any command (or set
@@ -272,17 +390,23 @@ snapshot, rewrites it in the new format, and copies any session files that exist
 are never overwritten). Once you have confirmed every account works, the old
 `*-dir` folders can be deleted.
 
-`cc sync` still exists but is now a no-op that tells you sessions are already
-shared.
+`cc sync` no longer copies sessions around — they are already shared. What it
+does now is reconcile the per-directory profiles described above with the saved
+accounts, which matters only if a bound window was killed before it could.
 
 ## Notes
 
 - Accounts live in `~/.claude-accounts/<name>.json`, written with `0600`
   permissions. **They contain OAuth tokens — do not commit or share them.**
+- Profiles live in `~/.claude-accounts/profiles/<name>/` and bindings in
+  `~/.claude-accounts/.bindings.json`. A profile is rebuilt from the saved
+  account whenever it is used, so deleting one costs nothing.
 - `~/.claude.json` is backed up to `~/.claude-accounts/.claude.json.bak` before
   every switch.
 - Quit Claude Code before switching. A running instance rewrites `~/.claude.json`
-  when it exits and would restore the previous account's identity.
+  when it exits and would restore the previous account's identity. A window
+  started with `cc run` writes to its own profile instead, so it neither
+  clobbers a switch nor is clobbered by one.
 - On macOS, credentials are read from and written to the Keychain
   (`Claude Code-credentials`) when no `.credentials.json` file exists.
 - Accounts and the install are independent. Reinstalling, updating or rolling
@@ -297,6 +421,8 @@ shared.
 | `CLAUDE_SWITCH_PYTHON` | interpreter to use |
 | `CLAUDE_SWITCH_HOME` | install root (default `~/.claude-switch`) |
 | `CLAUDE_SWITCH_NAME` | what to call the command (default `cc`) |
+| `CLAUDE_SWITCH_ACCOUNT` | account `cc run` should use, ahead of any binding |
+| `CLAUDE_SWITCH_CLAUDE` | the `claude` executable `cc run` should start |
 | `CLAUDE_SWITCH_BIN` | directory the launchers go into |
 | `CLAUDE_SWITCH_CHANNEL` | channel for a fresh install: `main` or `stable` |
 | `CLAUDE_SWITCH_REPO` | `owner/name` to install and update from, e.g. a fork |
@@ -321,6 +447,8 @@ src/claude_accounts/        all logic, stdlib only
   cli.py                      argument parsing, entry point
   commands.py                 one function per subcommand
   store.py                    save / load / apply accounts
+  profiles.py                 per-account config dirs for `cc run`
+  bindings.py                 which directory runs under which account
   credentials.py              .credentials.json and the macOS Keychain
   api.py                      OAuth usage + token refresh
   updater.py                  version resolution, download, activate, rollback
