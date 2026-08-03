@@ -231,10 +231,16 @@ access token automatically.
 ### Manage
 
 ```bash
+cc rename old new     # or `cc mv`
 cc remove old-account
 cc doctor         # diagnose install, paths, credentials, API access
 cc update         # install the newest build
 ```
+
+`cc rename` moves the account file, the name recorded inside it, the account's
+profile and every binding that pointed at it. The one thing it cannot reach is a
+`.claude-account` file inside a repository, which names the account as plain
+text — edit that by hand.
 
 ## Two accounts at the same time, one per directory
 

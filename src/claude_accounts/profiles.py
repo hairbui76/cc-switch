@@ -324,7 +324,7 @@ def sync_back(name: str) -> bool:
     if not (blk.get("accessToken") or blk.get("refreshToken")):
         # Claude Code blanks this file when a login expires past repair. Saving
         # that over the store would destroy the refresh token `cc usage` and a
-        # later `claude login` can still be recovered from, so keep what we have.
+        # later `claude login` can still be recovered from, so keep ours.
         if creds is not None:
             warn(f"{name}: no tokens left in the profile - kept the stored "
                  "copy; run `claude login` in that window to sign in again")
@@ -334,6 +334,30 @@ def sync_back(name: str) -> bool:
     cfg = read_json(config_path_for(name), {}) or {}
     save_account(build_account(name, creds, cfg))
     link_shared(profile_dir(name))
+    return True
+
+
+def rename_profile(old: str, new: str) -> bool:
+    """Move a profile to a new account name.
+
+    The links inside it are absolute, so moving the directory leaves them
+    pointing exactly where they did.
+    """
+    source = profile_dir(old)
+    if not os.path.isdir(source):
+        return False
+
+    target = profile_dir(new)
+    if os.path.isdir(target):
+        # An orphan from an earlier rename or removal. Unlink it properly
+        # rather than let os.rename fail on a directory that is not empty.
+        remove_profile(new)
+
+    try:
+        os.rename(source, target)
+    except OSError as exc:
+        warn(f"could not move the profile to {target}: {exc}")
+        return False
     return True
 
 

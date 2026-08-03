@@ -15,8 +15,8 @@ from .paths import (account_path, claude_config_path, claude_dir,
                     credentials_path, profile_dir, profiles_dir, store_dir)
 from .store import (account_summary, current_account_name,
                     current_account_uuid, find_by_uuid, list_accounts,
-                    load_account, apply_account, slugify, snapshot_current,
-                    unique_name)
+                    load_account, apply_account, save_account, slugify,
+                    snapshot_current, unique_name)
 from .term import (CliError, bold, dim, green, info, ok, pad, red, warn,
                    yellow)
 
@@ -307,6 +307,43 @@ def cmd_remove(args):
     for directory in dropped:
         info(f"unbound {dim(directory)}")
     ok(f"removed {bold(args.name)}")
+    return 0
+
+
+def cmd_rename(args):
+    old, new = args.name, args.new_name
+    data = load_account(old)          # also rejects a v1 record
+    if new == old:
+        raise CliError(f"'{old}' is already called that")
+    if slugify(new) != new:
+        raise CliError(f"'{new}' cannot be a file name - "
+                       f"try '{slugify(new)}'")
+    if os.path.exists(account_path(new)):
+        raise CliError(f"account '{new}' already exists - remove it first, "
+                       "or pick another name")
+
+    # Write the new record before dropping the old one: a duplicate can be
+    # cleaned up by hand, a deleted account cannot.
+    data["name"] = new
+    save_account(data)
+    os.remove(account_path(old))
+
+    if profiles.rename_profile(old, new):
+        info(f"moved its profile to {dim(profile_dir(new))}")
+    for directory in bindings.rename_account(old, new):
+        info(f"rebound {dim(directory)}")
+
+    legacy = os.path.join(store_dir(), old + "-dir")
+    if os.path.isdir(legacy):
+        # Left alone it would be imported under the old name by `migrate`.
+        try:
+            os.rename(legacy, os.path.join(store_dir(), new + "-dir"))
+        except OSError as exc:
+            warn(f"could not rename the v1 snapshot dir: {exc}")
+
+    ok(f"renamed {bold(old)} -> {bold(new)}  {account_summary(data)}")
+    print(dim(f"     a .claude-account file naming {old} has to be edited "
+              "by hand"))
     return 0
 
 

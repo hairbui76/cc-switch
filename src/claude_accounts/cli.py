@@ -13,7 +13,7 @@ from .term import CliError, enable_debug, err
 KNOWN_ARGS = {
     "save", "use", "next", "list", "ls", "status", "remove", "rm",
     "usage", "migrate", "sync", "doctor", "update", "version", "setup",
-    "run", "bind", "unbind", "bindings", "env",
+    "run", "bind", "unbind", "bindings", "env", "rename", "mv",
     "help", "-h", "--help", "--version",
 }
 
@@ -81,6 +81,12 @@ def build_parser():
 
     p = sub.add_parser("status", help="show the account currently logged in")
     p.set_defaults(func=commands.cmd_status)
+
+    for alias in ("rename", "mv"):
+        p = sub.add_parser(alias, help="rename a saved account")
+        p.add_argument("name", help="the account to rename")
+        p.add_argument("new_name", metavar="new-name")
+        p.set_defaults(func=commands.cmd_rename)
 
     for alias in ("remove", "rm"):
         p = sub.add_parser(alias, help="delete a saved account")
