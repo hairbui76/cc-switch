@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.3.0](https://github.com/hairbui76/cc-switch/compare/v3.2.0...v3.3.0) (2026-08-04)
+
+
+### Features
+
+* make `cc env` usable as a launch hook ([8b7b49d](https://github.com/hairbui76/cc-switch/commit/8b7b49d6af603c77c605547d7b9ad1c61aae9b17))
+
+
+### Documentation
+
+* cover the plain format and the per-directory launch hook ([1dfdbc2](https://github.com/hairbui76/cc-switch/commit/1dfdbc2afb858ea599f89a15ec124ce72055bb6a))
+
 ## [3.2.0](https://github.com/hairbui76/cc-switch/compare/v3.1.0...v3.2.0) (2026-08-03)
 
 
