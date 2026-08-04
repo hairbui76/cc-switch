@@ -447,6 +447,12 @@ def env_exports(data, shell: str):
     The escape hatch for anything that launches `claude` itself instead of
     going through `cc run`: VS Code's integrated terminal, a wrapper script, a
     long-lived tmux pane.
+
+    `plain` emits bare `KEY=VALUE` for consumers that read the pairs
+    themselves rather than eval'ing a shell: agent-of-empires'
+    `host_hooks.before_session`, `docker --env-file`, systemd
+    `EnvironmentFile`. No quoting is applied, because nothing downstream
+    unquotes it -- a quote would land in the value.
     """
     path = ensure_profile(data)
     if shell == "posix" and os.name == "nt":
@@ -460,4 +466,6 @@ def env_exports(data, shell: str):
         return [f'$env:{key} = "{value}"' for key, value in pairs]
     if shell == "cmd":
         return [f'set "{key}={value}"' for key, value in pairs]
+    if shell == "plain":
+        return [f"{key}={value}" for key, value in pairs]
     return [f'export {key}="{value}"' for key, value in pairs]
