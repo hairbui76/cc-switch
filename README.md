@@ -335,6 +335,42 @@ For a VS Code workspace, put the same value in
 Only `cc run` syncs tokens back on exit, so run `cc sync` now and then if you
 launch Claude Code this way.
 
+### Anything that reads `KEY=VALUE` instead of a shell
+
+`cc env --format plain` drops the shell syntax and emits the pairs bare:
+
+```text
+CLAUDE_CONFIG_DIR=/home/you/.claude-accounts/profiles/work
+CLAUDE_SWITCH_ACCOUNT=work
+```
+
+That is the shape `docker --env-file`, systemd `EnvironmentFile`, and
+[agent-of-empires](https://github.com/agent-of-empires/agent-of-empires)'
+`host_hooks.before_session` all read. Nothing unquotes it, so no quoting is
+applied — a quote would land in the value.
+
+Add `--if-bound` for anything that runs on **every** launch. Plain `cc env`
+fails on an unbound directory, which is right for `eval "$(cc env)"` (you asked
+for an account and there isn't one) but wrong for a launch hook: it would abort
+every session in every directory you never bound. With the flag, an unbound
+directory prints nothing and exits 0, so the agent just uses your live login. A
+broken account or profile still fails.
+
+```toml
+# ~/.agent-of-empires/profiles/<name>/config.toml
+[host_hooks]
+before_session = ['cc env --format plain --if-bound']
+```
+
+AoE runs the hook with the working directory set to the session's project, so
+`cc env` resolves the same binding it would if you had `cd`'d there yourself —
+`cc bind` and `.claude-account` both apply, per-directory, with no AoE-specific
+configuration on this side. Requires an AoE build with `host_hooks.before_session`.
+
+One gotcha: `CLAUDE_SWITCH_ACCOUNT` outranks every binding. If it is set in the
+environment that started `aoe serve`, every session inherits that one account no
+matter what is bound. Unset it there.
+
 ### What is not shared
 
 - **`.claude.json` is per profile.** It is seeded from your live one the first
