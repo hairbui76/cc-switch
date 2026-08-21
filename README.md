@@ -5,9 +5,9 @@ sessions, settings and history shared across every account.
 
 ```text
 $ cc usage
-  ACCOUNT   SESSION (5h)             WEEK (7d)
-* work       21% Tue 00:50 (3h33m)    20% Mon 06:00 (6d8h)
-  personal    4% Tue 02:15 (4h58m)     9% Mon 06:00 (6d8h)
+  ACCOUNT   SESSION (5h)             WEEK (7d)                FABLE (7d)
+* work       21% Tue 00:50 (3h33m)    20% Mon 06:00 (6d8h)     37% Tue 06:00 (6d8h)
+  personal    4% Tue 02:15 (4h58m)     9% Mon 06:00 (6d8h)      -%
 ```
 
 ## How it works
@@ -227,6 +227,21 @@ cc usage work            # ...or just one
 `cc usage` reads `GET /api/oauth/usage` with each account's stored token. It
 does **not** switch accounts to collect the numbers, and it refreshes an expired
 access token automatically.
+
+The `FABLE (7d)` column is the account's per-model weekly cap. A cap like that
+does not arrive under a fixed key: it comes as an entry in the response's
+`limits` array carrying the model's display name, which is where Claude Code
+itself reads it, so the column keeps working when a model is renamed or another
+one appears. A plan with no separate Fable allowance reports no such entry and
+the column shows `-%` — that is the API saying "no window", not a number that
+went missing.
+
+```bash
+cc usage -v          # ... and any window the API reports that has no column
+```
+
+The endpoint also carries caps under pre-release code names, so a new model's
+usage turns up in `-v` before anyone can label it.
 
 ### Manage
 

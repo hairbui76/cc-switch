@@ -8,7 +8,8 @@ import time
 
 from . import bindings, migrate, profiles, shims, updater
 from .api import (OAUTH_CLIENT_ID, TOKEN_URL, USAGE_URL, ApiError, fetch_usage,
-                  fmt_pct, fmt_reset, http_json, token_for)
+                  fmt_pct, fmt_reset, http_json, model_window, other_windows,
+                  token_for)
 from .credentials import oauth_block, read_credentials
 from .jsonio import read_json
 from .paths import (account_path, claude_config_path, claude_dir,
@@ -358,6 +359,13 @@ def cmd_rename(args):
     return 0
 
 
+def _window_cell(block) -> str:
+    """`21% Sun 21:00 (2d9h)` - the percentage alone if nothing resets."""
+    block = block or {}
+    when = fmt_reset(block.get("resets_at"))
+    return f"{fmt_pct(block)} {dim(when)}" if when else fmt_pct(block)
+
+
 def cmd_usage(args):
     names = [args.name] if args.name else list_accounts()
     if not names:
@@ -374,22 +382,29 @@ def cmd_usage(args):
             rows.append((name, None, None, str(exc)))
 
     current = current_account_name()
-    width = max(len(n) for n in names)
+    # The header is a column too, or a table of short names sits under a
+    # heading wider than itself.
+    width = max([len(n) for n in names] + [len("ACCOUNT")])
     print(bold(f"  {'ACCOUNT'.ljust(width)}  "
-               f"{'SESSION (5h)'.ljust(23)}  WEEK (7d)"))
+               f"{'SESSION (5h)'.ljust(23)}  "
+               f"{'WEEK (7d)'.ljust(23)}  FABLE (7d)"))
 
     for name, data, usage, error in rows:
         marker = green("*") if name == current else " "
         if error:
             print(f"{marker} {name.ljust(width)}  {red(error)}")
             continue
-        five = usage.get("five_hour") or {}
-        seven = usage.get("seven_day") or {}
-        session = f"{fmt_pct(five)} {dim(fmt_reset(five.get('resets_at')))}"
-        week = f"{fmt_pct(seven)} {dim(fmt_reset(seven.get('resets_at')))}"
-        print(f"{marker} {name.ljust(width)}  {pad(session, 23)}  {week}")
+        session = _window_cell(usage.get("five_hour"))
+        week = _window_cell(usage.get("seven_day"))
+        fable = _window_cell(model_window(usage, "fable"))
+        print(f"{marker} {name.ljust(width)}  {pad(session, 23)}  "
+              f"{pad(week, 23)}  {fable}")
         if args.verbose:
             print(dim(f"    {account_summary(data)}"))
+            # Caps the API reports under a name no column claims yet - which is
+            # where a new model shows up before it is public.
+            for key, block in other_windows(usage).items():
+                print(f"    {dim(key)}: {_window_cell(block)}")
     return 0
 
 

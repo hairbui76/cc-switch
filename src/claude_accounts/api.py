@@ -161,6 +161,54 @@ def fetch_usage(token):
     return http_json(USAGE_URL, token=token, stage="usage")
 
 
+# Windows this tool gives a column of its own.
+CHARTED_WINDOWS = ("five_hour", "seven_day")
+
+
+def model_window(usage, model: str):
+    """The weekly window for one model, or {} if the plan has no cap for it.
+
+    A per-model cap does not arrive under a fixed key. It comes as a
+    self-describing entry in `limits` - kind `weekly_scoped`, carrying the
+    display name the server chose for the model - which is the same thing
+    Claude Code reads, and keeps working when a model is renamed or a new one
+    appears. A fixed key is accepted too, for the day the API grows one.
+    """
+    wanted = model.lower()
+    for entry in usage.get("limits") or []:
+        if not isinstance(entry, dict):
+            continue
+        if (entry.get("group") or "weekly") != "weekly":
+            continue
+        scope = entry.get("scope") or {}
+        name = ((scope.get("model") or {}).get("display_name") or "")
+        if wanted in name.lower():
+            return {"utilization": entry.get("percent"),
+                    "resets_at": entry.get("resets_at")}
+
+    for key in (f"seven_day_{wanted}", wanted):
+        block = usage.get(key)
+        if isinstance(block, dict):
+            return block
+    return {}
+
+
+def other_windows(usage):
+    """Windows the API reports that no column covers.
+
+    The endpoint carries pre-release code names for caps that are not public
+    yet, so a new model's usage turns up here before anyone knows to give it a
+    column. Shown by `usage -v` rather than guessed at.
+    """
+    found = {}
+    for key, block in (usage or {}).items():
+        if key in CHARTED_WINDOWS or key == "extra_usage":
+            continue
+        if isinstance(block, dict) and block.get("utilization") is not None:
+            found[key] = block
+    return found
+
+
 # --------------------------------------------------------------------------
 # formatting
 # --------------------------------------------------------------------------
